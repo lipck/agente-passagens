@@ -6,7 +6,7 @@ import time
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-def enviar_alerta(mensagem):
+def enviar_alerta(msg):
 
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
@@ -14,86 +14,91 @@ def enviar_alerta(mensagem):
         url,
         data={
             "chat_id": CHAT_ID,
-            "text": mensagem
+            "text": msg
         }
     )
 
 
-origens = ["GIG","SDU"]
+origem = "RIO DE JANEIRO"
 
 destinos = [
-"JFK","MIA","LAX","MCO",
-"LHR","CDG","MAD","BCN",
-"FCO","LIS","AMS","FRA",
-"ZRH","DXB","DOH",
-"SCL","EZE","LIM",
-"YYZ","YUL",
-"NRT","HND","ICN"
+"JOÃO PESSOA",
+"MIAMI",
+"ORLANDO",
+"PARIS",
+"ROMA",
+"MADRI",
+"LISBOA",
+"SANTIAGO",
+"BUENOS AIRES"
 ]
 
-def gerar_preco():
-    return random.randint(800,4000)
 
-def gerar_distancia():
-    return random.randint(4000,10000)
+meses = {
+"Março": list(range(1,31)),
+"Abril": list(range(1,31)),
+"Maio": list(range(1,31))
+}
+
+
+def gerar_datas():
+
+    ida = random.sample(range(1,30), random.randint(3,8))
+    volta = random.sample(range(1,30), random.randint(3,8))
+
+    ida.sort()
+    volta.sort()
+
+    return ida, volta
+
+
+def formatar_lista(lista):
+
+    return ", ".join(str(x) for x in lista)
+
 
 def verificar_promocoes():
 
-    for origem in origens:
-        for destino in destinos:
+    for destino in destinos:
 
-            preco = gerar_preco()
-            distancia = gerar_distancia()
+        preco = random.randint(700,1500)
 
-            preco_km = preco/distancia
+        milhas = random.randint(25000,70000)
 
-            if preco < 1500:
+        mensagem = f"{origem} ✈️ {destino}\n\n"
 
-                mensagem = f"""
-🔥 PROMOÇÃO DETECTADA
+        for mes in meses:
 
-Origem: {origem}
-Destino: {destino}
+            ida, volta = gerar_datas()
 
-Preço: R$ {preco}
+            mensagem += f"🗓 Mês de {mes}\n\n"
+            mensagem += f"🛫 Ida: {formatar_lista(ida)}\n"
 
-Preço por km: {round(preco_km,2)}
+            if random.choice([True, False]):
+                mensagem += f"🛬 Volta: {formatar_lista(volta)}\n"
 
-Pesquisar em:
-Google Flights
-https://www.google.com/travel/flights
+            mensagem += "\n"
 
-ou
+        if random.choice([True, False]):
 
-Skyscanner
-https://www.skyscanner.com
-"""
+            mensagem += f"Valor: R$ {preco} (IDA E VOLTA)\n\n"
 
-                enviar_alerta(mensagem)
+        else:
 
-            milhas = random.randint(20000,70000)
+            mensagem += f"Milhas necessárias: {milhas}\n"
+            mensagem += "Programa: Azul Fidelidade\n\n"
 
-            if milhas <= 80000:
+        mensagem += "Encontrar passagem em:\n\n"
 
-                mensagem = f"""
-✈️ PROMOÇÃO COM MILHAS
+        mensagem += "Google Flights\n"
+        mensagem += "https://www.google.com/travel/flights\n\n"
 
-Origem: {origem}
-Destino: {destino}
+        mensagem += "ou\n\n"
 
-Milhas necessárias: {milhas}
+        mensagem += "Skyscanner\n"
+        mensagem += "https://www.skyscanner.com\n"
 
-Programa:
-Azul Fidelidade
-
-Datas sugeridas:
-flexível próximos 6 meses
-
-Pesquisar em:
-https://www.voeazul.com.br
-"""
-
-                enviar_alerta(mensagem)
+        enviar_alerta(mensagem)
 
 
 while True:
