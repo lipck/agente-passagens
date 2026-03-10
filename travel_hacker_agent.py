@@ -2,11 +2,12 @@ import os
 import requests
 import random
 import time
+from datetime import datetime
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-def enviar_alerta(msg):
+def enviar_alerta(mensagem):
 
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
@@ -14,7 +15,7 @@ def enviar_alerta(msg):
         url,
         data={
             "chat_id": CHAT_ID,
-            "text": msg
+            "text": mensagem
         }
     )
 
@@ -22,89 +23,145 @@ def enviar_alerta(msg):
 origem = "RIO DE JANEIRO"
 
 destinos = [
-"JOÃO PESSOA",
-"MIAMI",
-"ORLANDO",
-"PARIS",
-"ROMA",
-"MADRI",
-"LISBOA",
-"SANTIAGO",
-"BUENOS AIRES"
+"JOÃO PESSOA","LISBOA","MADRID","PARIS","ROMA",
+"ORLANDO","MIAMI","NOVA YORK",
+"SANTIAGO","BUENOS AIRES","LIMA",
+"TÓQUIO","SEUL","DUBAI"
 ]
 
 
-meses = {
-"Março": list(range(1,31)),
-"Abril": list(range(1,31)),
-"Maio": list(range(1,31))
-}
+meses = [
+"Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+"Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
+]
 
 
 def gerar_datas():
 
-    ida = random.sample(range(1,30), random.randint(3,8))
-    volta = random.sample(range(1,30), random.randint(3,8))
+    ida = sorted(random.sample(range(1,28), random.randint(3,8)))
+    volta = sorted(random.sample(range(1,28), random.randint(2,6)))
 
-    ida.sort()
-    volta.sort()
+    ida = ", ".join(map(str, ida))
+    volta = ", ".join(map(str, volta))
 
     return ida, volta
 
 
-def formatar_lista(lista):
+def gerar_preco():
 
-    return ", ".join(str(x) for x in lista)
+    return random.randint(700,2000)
 
 
-def verificar_promocoes():
+def gerar_distancia():
+
+    return random.randint(3000,10000)
+
+
+def gerar_milhas():
+
+    return random.randint(20000,70000)
+
+
+def gerar_alerta(destino):
+
+    preco = gerar_preco()
+    distancia = gerar_distancia()
+    preco_km = round(preco/distancia,2)
+
+    mes1, mes2, mes3 = random.sample(meses,3)
+
+    ida1, volta1 = gerar_datas()
+    ida2, volta2 = gerar_datas()
+    ida3, volta3 = gerar_datas()
+
+    mensagem = f"""
+{origem} ✈ {destino}
+
+🗓 Mês de {mes1}
+
+🛫 Ida: {ida1}
+
+🛬 Volta: {volta1}
+
+
+🗓 Mês de {mes2}
+
+🛫 Ida: {ida2}
+🛬 Volta: {volta2}
+
+
+🗓 Mês de {mes3}
+
+🛫 Ida: {ida3}
+🛬 Volta: {volta3}
+
+
+Valor: R$ {preco} (IDA E VOLTA)
+
+Preço por km: {preco_km}
+
+Pesquisar em:
+
+Google Flights
+https://www.google.com/travel/flights
+
+ou
+
+Skyscanner
+https://www.skyscanner.com
+"""
+
+    enviar_alerta(mensagem)
+
+
+def gerar_alerta_milhas(destino):
+
+    milhas = gerar_milhas()
+
+    if milhas > 80979:
+        return
+
+    ida, volta = gerar_datas()
+
+    mensagem = f"""
+{origem} ✈ {destino}
+
+✈ PROMOÇÃO COM MILHAS
+
+Programa:
+Azul Fidelidade
+
+Milhas necessárias:
+{milhas}
+
+🛫 Ida: {ida}
+🛬 Volta: {volta}
+
+Tipo:
+IDA E VOLTA
+
+Pesquisar em:
+https://www.voeazul.com.br
+"""
+
+    enviar_alerta(mensagem)
+
+
+def verificar_rotas():
 
     for destino in destinos:
 
-        preco = random.randint(700,1500)
+        if random.random() < 0.35:
+            gerar_alerta(destino)
 
-        milhas = random.randint(25000,70000)
-
-        mensagem = f"{origem} ✈️ {destino}\n\n"
-
-        for mes in meses:
-
-            ida, volta = gerar_datas()
-
-            mensagem += f"🗓 Mês de {mes}\n\n"
-            mensagem += f"🛫 Ida: {formatar_lista(ida)}\n"
-
-            if random.choice([True, False]):
-                mensagem += f"🛬 Volta: {formatar_lista(volta)}\n"
-
-            mensagem += "\n"
-
-        if random.choice([True, False]):
-
-            mensagem += f"Valor: R$ {preco} (IDA E VOLTA)\n\n"
-
-        else:
-
-            mensagem += f"Milhas necessárias: {milhas}\n"
-            mensagem += "Programa: Azul Fidelidade\n\n"
-
-        mensagem += "Encontrar passagem em:\n\n"
-
-        mensagem += "Google Flights\n"
-        mensagem += "https://www.google.com/travel/flights\n\n"
-
-        mensagem += "ou\n\n"
-
-        mensagem += "Skyscanner\n"
-        mensagem += "https://www.skyscanner.com\n"
-
-        enviar_alerta(mensagem)
+        if random.random() < 0.25:
+            gerar_alerta_milhas(destino)
 
 
 while True:
 
-    verificar_promocoes()
+    verificar_rotas()
 
-    print("Verificação concluída")
+    print("varredura concluída")
 
     time.sleep(900)
