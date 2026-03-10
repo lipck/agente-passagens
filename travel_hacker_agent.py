@@ -1,172 +1,88 @@
 import os
 import requests
 import random
-import time
 from datetime import datetime, timedelta
-from collections import defaultdict
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-MILHAS_DISPONIVEIS = 80979
-
-origem_nome = "RIO DE JANEIRO"
-origens = ["GIG","SDU"]
-
-destinos = {
-"LIS":"LISBOA",
-"FCO":"ROMA",
-"MAD":"MADRID",
-"CDG":"PARIS",
-"BCN":"BARCELONA",
-"MIA":"MIAMI",
-"MCO":"ORLANDO",
-"JFK":"NOVA YORK",
-"SCL":"SANTIAGO",
-"EZE":"BUENOS AIRES",
-"LIM":"LIMA",
-"GRU":"SÃO PAULO",
-"REC":"RECIFE",
-"SSA":"SALVADOR",
-"JPA":"JOÃO PESSOA"
-}
-
-def enviar_alerta(msg):
-
+# Função para enviar mensagens no Telegram
+def enviar_alerta(mensagem):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    requests.post(url, data={"chat_id": CHAT_ID, "text": mensagem})
 
-    requests.post(
-        url,
-        data={
-            "chat_id": CHAT_ID,
-            "text": msg
-        }
-    )
+# Lista de origens (somente Brasil)
+origens = [
+    "RIO DE JANEIRO", "SÃO PAULO", "BRASÍLIA", "BELO HORIZONTE", 
+    "PORTO ALEGRE", "CURITIBA", "SALVADOR", "RECIFE", "FORTALEZA",
+    "MANAUS", "BELÉM", "GOIÂNIA", "VITÓRIA", "NATAL"
+]
 
+# Lista de destinos (nacional + internacional)
+destinos = [
+    "JOÃO PESSOA", "MACEIÓ", "ORLANDO", "MIAMI", "LISBOA", "PARIS", 
+    "ROMA", "BARCELONA", "MADRI", "NOVA YORK", "LOS ANGELES", "SAN FRANCISCO",
+    "LAS VEGAS", "CHICAGO", "VANCOUVER", "TORONTO", "MONTREAL", "CANCÚN",
+    "CIDADE DO MÉXICO", "SAN JOSÉ", "PUNTA CANA", "HAVANA", "SAN JUAN",
+    "BELIZE CITY", "KINGSTON", "BUENOS AIRES", "SANTIAGO", "CARTAGENA",
+    "MEDLLÍN", "QUITO", "MONTEVIDÉU", "LONDRES", "AMSTERDÃ", "VIEENA",
+    "BERLIM", "DUBAI", "SYDNEY", "MELBOURNE", "AUCKLAND", "QUEENSTOWN"
+    # Adicione todos os destinos da sua lista conforme necessário
+]
+
+# Função para gerar datas simuladas (somente a partir de hoje)
 def gerar_datas():
-
     hoje = datetime.now()
-    limite = hoje + timedelta(days=550)
+    # gerar mês e ano aleatório do mês atual ou posterior
+    mes = random.randint(hoje.month, 12)
+    ano = hoje.year if mes >= hoje.month else hoje.year + 1
+    # gerar datas de ida
+    ida = sorted([(hoje + timedelta(days=random.randint(1, 365))).strftime("%d/%m/%Y") for _ in range(random.randint(2,5))])
+    volta = sorted([(hoje + timedelta(days=random.randint(1, 365))).strftime("%d/%m/%Y") for _ in range(random.randint(2,5))])
+    return mes, ano, ida, volta
 
-    datas = []
-
-    while hoje < limite:
-
-        if random.random() < 0.1:
-            datas.append(hoje)
-
-        hoje += timedelta(days=1)
-
-    return datas
-
-def agrupar_por_mes(datas):
-
-    grupos = defaultdict(list)
-
-    for d in datas:
-
-        chave = (d.year, d.month)
-
-        grupos[chave].append(d)
-
-    return grupos
-
+# Função para gerar preço aleatório
 def gerar_preco():
-    return random.randint(500,2500)
+    return random.randint(750, 4000)
 
+# Função para gerar milhas simuladas
 def gerar_milhas():
-    return random.randint(20000,70000)
+    return random.randint(20000, 80000)
 
-def distancia_estimada():
-    return random.randint(2000,10000)
+# Função principal para simular promoções
+def verificar_promocoes():
+    for origem in origens:
+        for destino in destinos:
+            mes, ano, datas_ida, datas_volta = gerar_datas()
 
-def verificar():
-
-    for codigo, destino in destinos.items():
-
-        datas_ida = gerar_datas()
-        datas_volta = gerar_datas()
-
-        grupos_ida = agrupar_por_mes(datas_ida)
-        grupos_volta = agrupar_por_mes(datas_volta)
-
-        for chave in grupos_ida:
-
-            if chave not in grupos_volta:
-                continue
-
-            ano, mes = chave
-
-            nome_mes = datetime(ano,mes,1).strftime("%B %Y")
-
-            ida = grupos_ida[chave][:4]
-            volta = grupos_volta[chave][:4]
-
+            # Simulação preço
             preco = gerar_preco()
-            distancia = distancia_estimada()
+            distancia = random.randint(4000, 12000)
+            preco_km = round(preco/distancia, 2)
 
-            preco_km = round(preco/distancia,2)
+            # Formatar mensagem de preço
+            msg = f"{origem} ✈️ {destino}\n\n"
+            msg += f"🗓 Mês: {datetime(ano, mes, 1).strftime('%B %Y')}\n\n"
+            msg += "🛫 Ida:\n" + "\n".join(datas_ida) + "\n\n"
+            msg += "🛬 Volta:\n" + "\n".join(datas_volta) + "\n\n"
+            msg += f"Valor: R$ {preco} (IDA E VOLTA)\nPreço por km: {preco_km}\n\n"
+            msg += "Google Flights\nhttps://www.google.com/travel/flights\n\nou\n\n"
+            msg += "Skyscanner\nhttps://www.skyscanner.com\n"
 
+            enviar_alerta(msg)
+
+            # Simulação milhas (apenas se dentro do saldo)
             milhas = gerar_milhas()
+            if milhas <= 80979:  # seu saldo atual
+                msg_milhas = f"{origem} ✈️ {destino}\n\n"
+                msg_milhas += f"🗓 Mês: {datetime(ano, mes, 1).strftime('%B %Y')}\n\n"
+                msg_milhas += "🛫 Ida:\n" + "\n".join(datas_ida) + "\n\n"
+                msg_milhas += "🛬 Volta:\n" + "\n".join(datas_volta) + "\n\n"
+                msg_milhas += f"Milhas necessárias: {milhas}\nPrograma: Azul Fidelidade\nTipo: Ida e Volta\n\n"
+                msg_milhas += "https://www.voeazul.com.br\n"
 
-            mensagem = f"""
-{origem_nome} ✈️ {destino}
+                enviar_alerta(msg_milhas)
 
-🗓 Mês: {nome_mes}
-
-🛫 Ida:
-"""
-
-            for d in ida:
-                mensagem += d.strftime("%d/%m/%Y") + "\n"
-
-            mensagem += "\n🛬 Volta:\n"
-
-            for d in volta:
-                mensagem += d.strftime("%d/%m/%Y") + "\n"
-
-            mensagem += f"""
-
-Valor: R$ {preco} (IDA E VOLTA)
-Preço por km: {preco_km}
-
-"""
-
-            if milhas <= MILHAS_DISPONIVEIS:
-
-                mensagem += f"""
-Milhas necessárias: {milhas}
-Programa: Azul Fidelidade
-Tipo: Ida e Volta
-"""
-
-            mensagem += """
-
-Pesquisar em:
-
-Google Flights
-https://www.google.com/travel/flights
-
-ou
-
-Skyscanner
-https://www.skyscanner.com
-"""
-
-            if preco < 1500 or milhas <= MILHAS_DISPONIVEIS:
-
-                enviar_alerta(mensagem)
-
-def executar():
-
-    print("Iniciando busca de passagens...")
-
-    verificar()
-
-    print("Busca finalizada")
-
-while True:
-
-    executar()
-
-    time.sleep(900)
+# Rodar o agente uma vez (GitHub Actions irá rodar a cada 15 minutos via cron)
+verificar_promocoes()
+print("Verificação concluída")
