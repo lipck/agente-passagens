@@ -6,83 +6,89 @@ from datetime import datetime, timedelta
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-# Função para enviar mensagens no Telegram
 def enviar_alerta(mensagem):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     requests.post(url, data={"chat_id": CHAT_ID, "text": mensagem})
 
-# Lista de origens (somente Brasil)
-origens = [
-    "RIO DE JANEIRO", "SÃO PAULO", "BRASÍLIA", "BELO HORIZONTE", 
-    "PORTO ALEGRE", "CURITIBA", "SALVADOR", "RECIFE", "FORTALEZA",
-    "MANAUS", "BELÉM", "GOIÂNIA", "VITÓRIA", "NATAL"
-]
+# Origem fixa
+origem = "RIO DE JANEIRO"
 
-# Lista de destinos (nacional + internacional)
+# Lista de destinos (exemplo reduzido, inclua todos que você mencionou)
 destinos = [
-    "JOÃO PESSOA", "MACEIÓ", "ORLANDO", "MIAMI", "LISBOA", "PARIS", 
-    "ROMA", "BARCELONA", "MADRI", "NOVA YORK", "LOS ANGELES", "SAN FRANCISCO",
-    "LAS VEGAS", "CHICAGO", "VANCOUVER", "TORONTO", "MONTREAL", "CANCÚN",
-    "CIDADE DO MÉXICO", "SAN JOSÉ", "PUNTA CANA", "HAVANA", "SAN JUAN",
-    "BELIZE CITY", "KINGSTON", "BUENOS AIRES", "SANTIAGO", "CARTAGENA",
-    "MEDLLÍN", "QUITO", "MONTEVIDÉU", "LONDRES", "AMSTERDÃ", "VIEENA",
-    "BERLIM", "DUBAI", "SYDNEY", "MELBOURNE", "AUCKLAND", "QUEENSTOWN"
-    # Adicione todos os destinos da sua lista conforme necessário
+    "LISBOA", "PARIS", "ROMA", "NOVA YORK", "MIAMI", "ORLANDO", "JOÃO PESSOA", "SALVADOR", "RECIFE"
 ]
 
-# Função para gerar datas simuladas (somente a partir de hoje)
-def gerar_datas():
+# Simula preços e datas
+def gerar_voos():
+    voos = {}
     hoje = datetime.now()
-    # gerar mês e ano aleatório do mês atual ou posterior
-    mes = random.randint(hoje.month, 12)
-    ano = hoje.year if mes >= hoje.month else hoje.year + 1
-    # gerar datas de ida
-    ida = sorted([(hoje + timedelta(days=random.randint(1, 365))).strftime("%d/%m/%Y") for _ in range(random.randint(2,5))])
-    volta = sorted([(hoje + timedelta(days=random.randint(1, 365))).strftime("%d/%m/%Y") for _ in range(random.randint(2,5))])
-    return mes, ano, ida, volta
+    ano_atual = hoje.year
+    ano_prox = ano_atual + 1
 
-# Função para gerar preço aleatório
-def gerar_preco():
-    return random.randint(750, 4000)
+    for destino in destinos:
+        voos_destino = []
 
-# Função para gerar milhas simuladas
-def gerar_milhas():
-    return random.randint(20000, 80000)
+        # Simula entre 1 e 3 meses de viagens
+        for _ in range(random.randint(1,3)):
+            mes_ida = random.randint(1,12)
+            ano_ida = random.choice([ano_atual, ano_prox])
 
-# Função principal para simular promoções
-def verificar_promocoes():
-    for origem in origens:
-        for destino in destinos:
-            mes, ano, datas_ida, datas_volta = gerar_datas()
+            # Gerar datas de ida (3 opções)
+            datas_ida = sorted([hoje + timedelta(days=random.randint(30, 365)) for _ in range(3)])
+            datas_ida = [d for d in datas_ida if d > hoje and d.month == mes_ida]
 
-            # Simulação preço
-            preco = gerar_preco()
-            distancia = random.randint(4000, 12000)
-            preco_km = round(preco/distancia, 2)
+            # Gerar datas de volta (3 opções) sempre depois da menor ida
+            if datas_ida:
+                menor_ida = min(datas_ida)
+                datas_volta = sorted([menor_ida + timedelta(days=random.randint(1,30)) for _ in range(3)])
+            else:
+                datas_volta = []
 
-            # Formatar mensagem de preço
-            msg = f"{origem} ✈️ {destino}\n\n"
-            msg += f"🗓 Mês: {datetime(ano, mes, 1).strftime('%B %Y')}\n\n"
-            msg += "🛫 Ida:\n" + "\n".join(datas_ida) + "\n\n"
-            msg += "🛬 Volta:\n" + "\n".join(datas_volta) + "\n\n"
-            msg += f"Valor: R$ {preco} (IDA E VOLTA)\nPreço por km: {preco_km}\n\n"
-            msg += "Google Flights\nhttps://www.google.com/travel/flights\n\nou\n\n"
-            msg += "Skyscanner\nhttps://www.skyscanner.com\n"
+            preco = random.randint(700,1500)
+            preco_km = round(preco / random.randint(4000,10000), 2)
+            milhas = random.randint(20000,70000)
 
-            enviar_alerta(msg)
+            voos_destino.append({
+                "mes": datas_ida[0].strftime("%B") if datas_ida else "Indefinido",
+                "ano": ano_ida,
+                "ida": [d.strftime("%d/%m/%Y") for d in datas_ida],
+                "volta": [d.strftime("%d/%m/%Y") for d in datas_volta],
+                "preco": preco,
+                "preco_km": preco_km,
+                "milhas": milhas
+            })
+        voos[destino] = voos_destino
+    return voos
 
-            # Simulação milhas (apenas se dentro do saldo)
-            milhas = gerar_milhas()
-            if milhas <= 80979:  # seu saldo atual
-                msg_milhas = f"{origem} ✈️ {destino}\n\n"
-                msg_milhas += f"🗓 Mês: {datetime(ano, mes, 1).strftime('%B %Y')}\n\n"
-                msg_milhas += "🛫 Ida:\n" + "\n".join(datas_ida) + "\n\n"
-                msg_milhas += "🛬 Volta:\n" + "\n".join(datas_volta) + "\n\n"
-                msg_milhas += f"Milhas necessárias: {milhas}\nPrograma: Azul Fidelidade\nTipo: Ida e Volta\n\n"
-                msg_milhas += "https://www.voeazul.com.br\n"
+def formatar_mensagem(voos):
+    for destino, lista_voos in voos.items():
+        for voo in lista_voos:
+            mensagem = f"{origem} ✈️ {destino}\n\n"
+            mensagem += f"🗓 Mês: {voo['mes']} {voo['ano']}\n\n"
+            if voo['ida']:
+                mensagem += "🛫 Ida:\n" + "\n".join(voo['ida']) + "\n\n"
+            if voo['volta']:
+                mensagem += "🛬 Volta:\n" + "\n".join(voo['volta']) + "\n\n"
 
-                enviar_alerta(msg_milhas)
+            if voo['preco'] <= 1500:
+                mensagem += f"Valor: R$ {voo['preco']} (IDA E VOLTA)\n"
+                mensagem += f"Preço por km: {voo['preco_km']}\n\n"
 
-# Rodar o agente uma vez (GitHub Actions irá rodar a cada 15 minutos via cron)
-verificar_promocoes()
-print("Verificação concluída")
+            if voo['milhas'] <= 80979:  # sua quantidade atual de pontos
+                mensagem += f"Milhas necessárias: {voo['milhas']}\n"
+                mensagem += "Programa: Azul Fidelidade\n"
+                mensagem += "Tipo: Ida e Volta\n\n"
+
+            mensagem += "Pesquisar em:\nGoogle Flights\nhttps://www.google.com/travel/flights\n\nou\nSkyscanner\nhttps://www.skyscanner.com"
+
+            enviar_alerta(mensagem)
+
+# Loop principal
+if __name__ == "__main__":
+    while True:
+        voos = gerar_voos()
+        formatar_mensagem(voos)
+        print("Verificação concluída")
+        # 15 minutos
+        import time
+        time.sleep(900)
