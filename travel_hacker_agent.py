@@ -2,10 +2,34 @@ import os
 import requests
 import random
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
+from collections import defaultdict
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
+
+MILHAS_DISPONIVEIS = 80979
+
+origem_nome = "RIO DE JANEIRO"
+origens = ["GIG","SDU"]
+
+destinos = {
+"LIS":"LISBOA",
+"FCO":"ROMA",
+"MAD":"MADRID",
+"CDG":"PARIS",
+"BCN":"BARCELONA",
+"MIA":"MIAMI",
+"MCO":"ORLANDO",
+"JFK":"NOVA YORK",
+"SCL":"SANTIAGO",
+"EZE":"BUENOS AIRES",
+"LIM":"LIMA",
+"GRU":"SÃO PAULO",
+"REC":"RECIFE",
+"SSA":"SALVADOR",
+"JPA":"JOÃO PESSOA"
+}
 
 def enviar_alerta(msg):
 
@@ -19,110 +43,106 @@ def enviar_alerta(msg):
         }
     )
 
+def gerar_datas():
 
-origens = {
-"GIG":"RIO DE JANEIRO",
-"SDU":"RIO DE JANEIRO"
-}
+    hoje = datetime.now()
+    limite = hoje + timedelta(days=550)
 
+    datas = []
 
-destinos = {
-"JPA":"JOÃO PESSOA",
-"GRU":"SÃO PAULO",
-"SSA":"SALVADOR",
-"REC":"RECIFE",
-"EZE":"BUENOS AIRES",
-"SCL":"SANTIAGO",
-"LIM":"LIMA",
-"MIA":"MIAMI",
-"MCO":"ORLANDO",
-"JFK":"NOVA YORK",
-"LIS":"LISBOA",
-"MAD":"MADRID",
-"CDG":"PARIS",
-"BCN":"BARCELONA",
-"FCO":"ROMA",
-"NRT":"TÓQUIO",
-"ICN":"SEUL",
-"DXB":"DUBAI"
-}
+    while hoje < limite:
 
+        if random.random() < 0.1:
+            datas.append(hoje)
 
-MESES = [
-"Janeiro","Fevereiro","Março","Abril","Maio","Junho",
-"Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
-]
+        hoje += timedelta(days=1)
 
+    return datas
 
-def gerar_datas(mes,ano):
+def agrupar_por_mes(datas):
 
-    dias_ida = sorted(random.sample(range(1,28),3))
-    dias_volta = sorted(random.sample(range(8,30),3))
+    grupos = defaultdict(list)
 
-    ida = [f"{d:02d}/{mes:02d}/{ano}" for d in dias_ida]
-    volta = [f"{d:02d}/{mes:02d}/{ano}" for d in dias_volta]
+    for d in datas:
 
-    return ida,volta
+        chave = (d.year, d.month)
 
+        grupos[chave].append(d)
+
+    return grupos
 
 def gerar_preco():
-
-    return random.randint(700,3500)
-
-
-def gerar_distancia():
-
-    return random.randint(400,10000)
-
+    return random.randint(500,2500)
 
 def gerar_milhas():
+    return random.randint(20000,70000)
 
-    return random.randint(15000,70000)
+def distancia_estimada():
+    return random.randint(2000,10000)
 
+def verificar():
 
-def formatar_lista(lista):
+    for codigo, destino in destinos.items():
 
-    return "\n".join(lista)
+        datas_ida = gerar_datas()
+        datas_volta = gerar_datas()
 
+        grupos_ida = agrupar_por_mes(datas_ida)
+        grupos_volta = agrupar_por_mes(datas_volta)
 
-def verificar_voos():
+        for chave in grupos_ida:
 
-    ano_atual = datetime.now().year
+            if chave not in grupos_volta:
+                continue
 
-    anos = [ano_atual,ano_atual+1]
+            ano, mes = chave
 
-    for origem in origens:
+            nome_mes = datetime(ano,mes,1).strftime("%B %Y")
 
-        for destino in destinos:
+            ida = grupos_ida[chave][:4]
+            volta = grupos_volta[chave][:4]
 
-            for mes in range(1,13):
+            preco = gerar_preco()
+            distancia = distancia_estimada()
 
-                for ano in anos:
+            preco_km = round(preco/distancia,2)
 
-                    ida,volta = gerar_datas(mes,ano)
+            milhas = gerar_milhas()
 
-                    preco = gerar_preco()
-                    distancia = gerar_distancia()
+            mensagem = f"""
+{origem_nome} ✈️ {destino}
 
-                    preco_km = round(preco/distancia,2)
-
-                    if preco < 1500:
-
-                        mensagem = f"""
-{origens[origem]} ✈️ {destinos[destino]}
-
-🗓 Mês: {MESES[mes-1]} {ano}
+🗓 Mês: {nome_mes}
 
 🛫 Ida:
-{formatar_lista(ida)}
+"""
 
-🛬 Volta:
-{formatar_lista(volta)}
+            for d in ida:
+                mensagem += d.strftime("%d/%m/%Y") + "\n"
+
+            mensagem += "\n🛬 Volta:\n"
+
+            for d in volta:
+                mensagem += d.strftime("%d/%m/%Y") + "\n"
+
+            mensagem += f"""
 
 Valor: R$ {preco} (IDA E VOLTA)
 Preço por km: {preco_km}
 
-Encontrar passagem em:
+"""
+
+            if milhas <= MILHAS_DISPONIVEIS:
+
+                mensagem += f"""
+Milhas necessárias: {milhas}
+Programa: Azul Fidelidade
+Tipo: Ida e Volta
+"""
+
+            mensagem += """
+
+Pesquisar em:
 
 Google Flights
 https://www.google.com/travel/flights
@@ -133,35 +153,20 @@ Skyscanner
 https://www.skyscanner.com
 """
 
-                        enviar_alerta(mensagem)
+            if preco < 1500 or milhas <= MILHAS_DISPONIVEIS:
 
-                    milhas = gerar_milhas()
+                enviar_alerta(mensagem)
 
-                    if milhas <= 80979:
+def executar():
 
-                        mensagem = f"""
-{origens[origem]} ✈️ {destinos[destino]}
+    print("Iniciando busca de passagens...")
 
-🗓 Mês: {MESES[mes-1]} {ano}
+    verificar()
 
-🛫 Ida:
-{formatar_lista(ida)}
-
-🛬 Volta:
-{formatar_lista(volta)}
-
-Milhas necessárias: {milhas}
-Programa: Azul Fidelidade
-Tipo: Ida e Volta
-"""
-
-                        enviar_alerta(mensagem)
-
+    print("Busca finalizada")
 
 while True:
 
-    verificar_voos()
-
-    print("Monitoramento executado")
+    executar()
 
     time.sleep(900)
