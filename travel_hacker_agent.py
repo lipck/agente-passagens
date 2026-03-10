@@ -4,8 +4,10 @@ import time
 import random
 from datetime import datetime, timedelta
 
-TOKEN = "SEU_TOKEN"
-CHAT_ID = "SEU_CHAT_ID"
+import os
+
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 
 origem = "Rio de Janeiro"
 
