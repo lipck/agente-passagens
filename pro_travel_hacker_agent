@@ -1,0 +1,66 @@
+import os
+import requests
+from datetime import datetime, timedelta
+
+# --- CONFIGURAÇÕES ---
+# Pegue o Token no @BotFather e o ID no @userinfobot
+TELEGRAM_TOKEN = "COLE_SEU_TOKEN_AQUI"
+CHAT_ID = "COLE_SEU_ID_AQUI"
+
+SALDO_AZUL = 80979
+VALOR_MILHA_AZUL = 21.0 # R$ 21,00 cada 1.000 milhas
+
+# Lista de destinos e preços "Alvo" (Se baixar disso, é promoção!)
+# Formato: [Nome, IATA, Preço Alvo em R$]
+destinos = [
+    ["Lisboa", "LIS", 3500],
+    ["Paris", "CDG", 3800],
+    ["Orlando", "MCO", 3200],
+    ["Miami", "MIA", 2800],
+    ["João Pessoa", "JPA", 800],
+    ["Buenos Aires", "EZE", 1200],
+    ["Nova York", "JFK", 3300]
+]
+
+def gerar_link_google_flights(destino_iata, ida, volta):
+    # Link formatado para o Google Flights
+    return f"https://www.google.com/travel/flights?q=Flights%20to%20{destino_iata}%20from%20RIO%20on%20{ida}%20through%20{volta}"
+
+def monitor_rio():
+    hoje = datetime.now()
+    
+    # Simulação de busca para os próximos 3 meses (Datas Futuras)
+    data_ida = (hoje + timedelta(days=45)).strftime("%Y-%m-%d")
+    data_volta = (hoje + timedelta(days=55)).strftime("%Y-%m-%d")
+
+    print("🚀 Iniciando monitoramento de ofertas saindo do RIO...")
+
+    for nome, iata, preco_alvo in destinos:
+        # Cálculo de milhas com base no preço alvo (estimado)
+        milhas_estimadas = int((preco_alvo / VALOR_MILHA_AZUL) * 1000)
+        
+        # Se o preço cabe no seu saldo de 80.979
+        if milhas_estimadas <= SALDO_AZUL:
+            status = "✅ CABE NAS SUAS MILHAS!"
+        else:
+            status = "⚠️ EXCEDERIA SEU SALDO"
+
+            link = gerar_link_google_flights(iata, data_ida, data_volta)
+            
+            mensagem = (
+                f"✈️ *OPORTUNIDADE: RIO ➔ {nome.upper()}*\n\n"
+                f"📅 Ida: {data_ida}\n"
+                f"📅 Volta: {data_volta}\n"
+                f"💰 Preço Alvo: R$ {preco_alvo}\n"
+                f"💎 Milhas Azul Estimadas: ~{milhas_estimadas:,} pts\n"
+                f"💡 {status}\n\n"
+                f"🔗 [CLIQUE AQUI PARA CONFERIR NO GOOGLE]({link})"
+            )
+            
+            # Envia para o Telegram
+            url_tel = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+            requests.post(url_tel, data={"chat_id": CHAT_ID, "text": mensagem, "parse_mode": "Markdown"})
+            print(f"Check feito para {nome}...")
+
+if __name__ == "__main__":
+    monitor_rio()
